@@ -27,17 +27,12 @@ CACHE_SECONDS = 15
 REQUEST_TIMEOUT = 12
 MOSCOW = timezone(timedelta(hours=3))
 
-# Исходные серии из бота. После экспирации выбирается
-# ближайшая действующая серия того же инструмента.
-CONTRACTS = (
-    ("SILV-9.26", "Серебро"),
-    ("BR-10.26", "Нефть Brent"),
-    ("NG-9.26", "Природный газ"),
-    ("COCOA-11.26", "Какао"),
-    ("CNY-9.26", "Юань / рубль"),
-    ("MIX-9.26", "Индекс МосБиржи"),
-    ("GOLD-9.26", "Золото"),
-)
+# Понятные названия для популярных базовых активов.
+ASSET_NAMES = {
+    "SILV": "Серебро", "BR": "Нефть Brent", "NG": "Природный газ",
+    "COCOA": "Какао", "CNY": "Юань / рубль",
+    "MIX": "Индекс МосБиржи", "GOLD": "Золото",
+}
 
 # Здесь только общедоступные данные Мосбиржи.
 # Ввод пользователей в кеше не хранится.
@@ -101,7 +96,7 @@ def fetch_market():
         "iss.meta": "off",
         "iss.only": "securities,marketdata",
         "securities.columns": (
-            "SECID,SHORTNAME,MINSTEP,STEPPRICE,"
+            "SECID,SHORTNAME,SECNAME,ASSETCODE,MINSTEP,STEPPRICE,"
             "INITIALMARGIN,LASTTRADEDATE"
         ),
         "marketdata.columns": (
@@ -141,53 +136,23 @@ def fetch_market():
     timestamp = datetime.now(timezone.utc).isoformat()
     instruments = []
 
-    for original, name in CONTRACTS:
-        base = asset(original)
-        candidates = []
-
-        for security in securities:
-            ticker = str(security.get("SHORTNAME") or "")
-            expiry = str(security.get("LASTTRADEDATE") or "")
-
-            if asset(ticker) != base:
-                continue
-            if not expiry or expiry < day:
-                continue
-
-            step = positive_text(security.get("MINSTEP"))
-            cost = positive_text(security.get("STEPPRICE"))
-            margin = positive_text(security.get("INITIALMARGIN"))
-
-            if not all((step, cost, margin)):
-                continue
-
-            candidates.append((security, step, cost, margin))
-
-        candidates.sort(
-            key=lambda item: (
-                str(item[0]["LASTTRADEDATE"]),
-                str(item[0]["SHORTNAME"]),
-            )
-        )
-
-        # Сохраняем исходную серию, пока она действует.
-        selected = next(
-            (
-                item
-                for item in candidates
-                if item[0]["SHORTNAME"] == original
-            ),
-            candidates[0] if candidates else None,
-        )
-
-        if selected is None:
+    for security in securities:
+        ticker = str(security.get("SHORTNAME") or "")
+        secid = str(security.get("SECID") or "")
+        expiry = str(security.get("LASTTRADEDATE") or "")
+        if not ticker or not secid or not expiry or expiry < day:
             continue
 
-        security, step, cost, margin = selected
-        quote = quotes.get(security["SECID"], {})
+        step = positive_text(security.get("MINSTEP"))
+        cost = positive_text(security.get("STEPPRICE"))
+        margin = positive_text(security.get("INITIALMARGIN"))
+        base = str(security.get("ASSETCODE") or asset(ticker))
+        name = ASSET_NAMES.get(base, security.get("SECNAME") or ticker)
+        quote = quotes.get(secid, {})
 
         instruments.append({
-            "asset": base,
+            "asset": secid,
+            "base": base,
             "ticker": security["SHORTNAME"],
             "name": name,
             "step": step,
@@ -205,7 +170,7 @@ def fetch_market():
     if not instruments:
         raise ValueError("Мосбиржа не вернула параметры контрактов")
 
-    return instruments
+    return sorted(instruments, key=lambda item: (item["base"], item["expiry"], item["ticker"]))
 
 
 def refresh_market():
@@ -225,23 +190,17 @@ def refresh_market():
                 merged = {
                     item["asset"]: dict(item, cached=True)
                     for item in market_cache["instruments"]
+                    if item["expiry"] >= today()
                 }
 
                 for item in fresh:
                     merged[item["asset"]] = dict(item, cached=False)
 
-                instruments = [
-                    merged[asset(original)]
-                    for original, _ in CONTRACTS
-                    if asset(original) in merged
-                ]
-
-                fresh_assets = {item["asset"] for item in fresh}
-                missing = [
-                    name
-                    for original, name in CONTRACTS
-                    if asset(original) not in fresh_assets
-                ]
+                instruments = sorted(
+                    merged.values(),
+                    key=lambda item: (item["base"], item["expiry"], item["ticker"]),
+                )
+                missing = [item["ticker"] for item in instruments if item["cached"]]
 
                 warning = ""
                 if missing:
@@ -279,8 +238,8 @@ def refresh_market():
         return {
             **market_cache,
             "catalog": [
-                {"asset": asset(ticker), "name": name}
-                for ticker, name in CONTRACTS
+                {"asset": item["asset"], "name": item["name"]}
+                for item in market_cache["instruments"]
             ],
             "refresh_seconds": CACHE_SECONDS,
             "source_delay_minutes": 15,
@@ -300,7 +259,10 @@ def get_market():
         return {
             **snapshot,
             "instruments": [dict(item) for item in snapshot["instruments"]],
-            "catalog": [{"asset": asset(ticker), "name": name} for ticker, name in CONTRACTS],
+            "catalog": [
+                {"asset": item["asset"], "name": item["name"]}
+                for item in snapshot["instruments"]
+            ],
             "refresh_seconds": CACHE_SECONDS,
             "source_delay_minutes": 15,
         }
@@ -374,6 +336,9 @@ def calculate(payload):
             raise ValueError(
                 "Количество: целое число от 1 до 1 000 000 000"
             )
+
+        if not all(instrument[key] for key in ("step", "cost", "margin")):
+            raise ValueError("Параметры расчёта контракта временно недоступны")
 
         step = Decimal(instrument["step"])
         cost = Decimal(instrument["cost"])
@@ -491,7 +456,7 @@ h1{font-size:27px;font-weight:600;margin:0 0 7px}
   border-radius:13px;padding:22px;min-width:0}
 h2{font-size:17px;margin:0 0 18px}
 .search{width:100%;padding:11px 12px;margin-bottom:14px}
-.contracts{display:flex;flex-direction:column;gap:9px}
+.contracts{display:flex;flex-direction:column;gap:9px;max-height:600px;overflow-y:auto}
 .contract{text-align:left;width:100%;padding:12px}
 .contract.active{border-color:var(--accent);background:#342b24}
 .contract strong,.contract small{display:block}
@@ -609,8 +574,8 @@ footer{font-size:12px;color:var(--muted);padding:26px 0;
              aria-label="Поиск контракта">
       <div id="contracts" class="contracts"></div>
       <p class="note">
-        После экспирации выбирается ближайшая действующая серия.
-        На экране всегда указан её фактический тикер.
+        В списке — избранные инструменты, ближайшие серии.
+        Поиск по всем фьючерсам: тикер, биржевой код или название.
       </p>
     </aside>
 
@@ -626,7 +591,7 @@ footer{font-size:12px;color:var(--muted);padding:26px 0;
 
       <form id="form">
         <label for="count">Количество контрактов</label>
-        <input id="count" inputmode="numeric" value="1" autocomplete="off">
+        <input id="count" inputmode="numeric" value="100" autocomplete="off">
 
         <div id="full-fields" hidden>
           <label for="direction">Направление</label>
@@ -739,7 +704,9 @@ footer{font-size:12px;color:var(--muted);padding:26px 0;
 
 const $ = id => document.getElementById(id);
 let market = {instruments: [], catalog: []};
-let selectedAsset = "BR";
+const favoriteBases = ["SILV", "BR", "NG", "COCOA", "CNY", "MIX", "GOLD"];
+let selectedAsset = null;
+let entryAutomatic = true;
 let mode = "quick";
 let marketBusy = false;
 let marketController = null;
@@ -809,11 +776,18 @@ function renderContracts() {
   container.replaceChildren();
   const search = $("search").value.trim().toLowerCase();
 
-  for (const entry of market.catalog) {
+  const entries = search ? market.catalog : favoriteBases.map(base => {
+    const nearest = market.instruments
+      .filter(item => item.base === base)
+      .sort((a, b) => a.expiry.localeCompare(b.expiry) || a.ticker.localeCompare(b.ticker))[0];
+    return nearest ? {asset: nearest.asset, name: nearest.name} : null;
+  }).filter(Boolean);
+
+  for (const entry of entries) {
     const item = market.instruments.find(i => i.asset === entry.asset);
     const ticker = item ? item.ticker : entry.asset;
 
-    if (!(ticker + " " + entry.name).toLowerCase().includes(search)) continue;
+    if (!(ticker + " " + entry.asset + " " + entry.name).toLowerCase().includes(search)) continue;
 
     const button = document.createElement("button");
     button.type = "button";
@@ -836,12 +810,19 @@ function renderContracts() {
     button.onclick = () => {
       invalidate();
       selectedAsset = entry.asset;
+      entryAutomatic = true;
       for (const id of ["entry", "tp", "sl"]) $(id).value = "";
       renderContracts();
       renderInstrument();
       calculate(false);
     };
     container.append(button);
+  }
+  if (!container.childElementCount) {
+    const empty = document.createElement("p");
+    empty.className = "note";
+    empty.textContent = "Контракты не найдены";
+    container.append(empty);
   }
 }
 
@@ -863,7 +844,8 @@ function renderInstrument() {
   $("volume").textContent = item && item.volume !== null
     ? fmt(item.volume, 0) + " шт." : "—";
 
-  $("calculate").disabled = !item;
+  if (entryAutomatic) $("entry").value = item?.last ?? "";
+  $("calculate").disabled = !item || !item.step || !item.cost || !item.margin;
   $("use-last").disabled = !item || item.last === null;
 
   if (!item) {
@@ -902,12 +884,19 @@ async function updateMarket() {
       signal: marketController.signal
     });
 
+    const oldBase = instrument()?.base;
     market = data;
+    if (!instrument()) {
+      const replacement = market.instruments.find(i => i.base === (oldBase || "BR"))
+        || market.instruments[0];
+      selectedAsset = replacement?.asset ?? null;
+    }
     const nextTicker = instrument()?.ticker;
 
     // Цены входа старой серии не переносятся в новую.
-    if (oldTicker && nextTicker && oldTicker !== nextTicker) {
+    if (oldTicker && oldTicker !== nextTicker) {
       invalidate();
+      entryAutomatic = true;
       for (const id of ["entry", "tp", "sl"]) $(id).value = "";
     }
 
@@ -1020,7 +1009,10 @@ $("count").oninput = () => {
 };
 
 for (const id of ["entry", "tp", "sl"]) {
-  $(id).oninput = invalidate;
+  $(id).oninput = () => {
+    if (id === "entry") entryAutomatic = false;
+    invalidate();
+  };
 }
 
 $("direction").onchange = () => {
@@ -1033,6 +1025,7 @@ $("direction").onchange = () => {
 $("use-last").onclick = () => {
   const item = instrument();
   if (item && item.last !== null) {
+    entryAutomatic = true;
     $("entry").value = item.last;
     invalidate();
   }
@@ -1041,10 +1034,12 @@ $("use-last").onclick = () => {
 $("reset").onclick = () => {
   invalidate();
   clearTimeout(debounce);
-  $("count").value = "1";
+  $("count").value = "100";
+  entryAutomatic = true;
   $("direction").value = "LONG";
   $("direction").onchange();
   for (const id of ["entry", "tp", "sl"]) $(id).value = "";
+  renderInstrument();
   calculate(false);
 };
 
