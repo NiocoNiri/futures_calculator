@@ -1,0 +1,84 @@
+[
+  {
+    "name": "chromium-desktop",
+    "checks": [
+      "initial load and HTTP Basic auth",
+      "no page horizontal overflow",
+      "TP-only and SL-only calculation",
+      "manual entry preserved",
+      "reorder persistence",
+      "search across 500 contracts",
+      "recovery after network failure",
+      "no uncaught JavaScript errors"
+    ],
+    "findings": [
+      "401, proxy HTML and network failure display identical generic message",
+      "refresh removes focused contract control"
+    ],
+    "searchRenderMs": [
+      3.8999999994412065,
+      2.800000000745058,
+      2.5,
+      2.5,
+      2.699999999254942
+    ],
+    "unauthorized": "Не удалось обновить данные. Показаны последние полученные значения. Повторная попытка выполняется автоматически.",
+    "proxy-html": "Не удалось обновить данные. Показаны последние полученные значения. Повторная попытка выполняется автоматически.",
+    "network-error": "Не удалось обновить данные. Показаны последние полученные значения. Повторная попытка выполняется автоматически.",
+    "focusRefresh": {
+      "before": "BUTTON",
+      "after": "BODY"
+    },
+    "status": "completed"
+  },
+  {
+    "name": "chromium-mobile",
+    "checks": [
+      "initial load and HTTP Basic auth",
+      "no page horizontal overflow",
+      "TP-only and SL-only calculation",
+      "manual entry preserved",
+      "reorder persistence",
+      "search across 500 contracts",
+      "recovery after network failure",
+      "no uncaught JavaScript errors"
+    ],
+    "findings": [
+      "401, proxy HTML and network failure display identical generic message",
+      "refresh removes focused contract control"
+    ],
+    "searchRenderMs": [
+      3.900000000372529,
+      2.599999999627471,
+      2.5,
+      2.5,
+      2.6000000005587935
+    ],
+    "mobileScroll": {
+      "before": 400,
+      "after": 400
+    },
+    "unauthorized": "Не удалось обновить данные. Показаны последние полученные значения. Повторная попытка выполняется автоматически.",
+    "proxy-html": "Не удалось обновить данные. Показаны последние полученные значения. Повторная попытка выполняется автоматически.",
+    "network-error": "Не удалось обновить данные. Показаны последние полученные значения. Повторная попытка выполняется автоматически.",
+    "focusRefresh": {
+      "before": "BUTTON",
+      "after": "BODY"
+    },
+    "status": "completed"
+  },
+  {
+    "name": "webkit-mobile",
+    "checks": [],
+    "findings": [],
+    "status": "failed or unavailable",
+    "error": "browserType.launch: \n╔══════════════════════════════════════════════════════╗\n║ Host system is missing dependencies to run browsers. ║\n║ Missing libraries:                                   ║\n║     libwebkitgtk-6.0.so.4                            ║\n║     libjavascriptcoregtk-6.0.so.1                    ║\n║     libicudata.so.74                                 ║\n║     libicui18n.so.74                                 ║\n║     libicuuc.so.74                                   ║\n║     libxml2.so.2                                     ║\n║     libflite.so.1                                    ║\n║     libflite_usenglish.so.1                          ║\n║     libflite_cmu_grapheme_lang.so.1                  ║\n║     libflite_cmu_grapheme_lex.so.1                   ║\n║     libflite_cmu_indic_lang.so.1                     ║\n║     libflite_cmu_indic_lex.so.1                      ║\n║     libflite_cmulex.so.1                             ║\n║     libflite_cmu_time_awb.so.1                       ║\n║     libflite_cmu_us_awb.so.1                         ║\n║     libflite_cmu_us_kal16.so.1                       ║\n║     libflite_cmu_us_kal.so.1                         ║\n║     libflite_cmu_us_rms.so.1                         ║\n║     libflite_cmu_us_slt.so.1                         ║\n╚══════════════════════════════════════════════════════╝"
+  },
+  {
+    "name": "webkit-desktop",
+    "checks": [],
+    "findings": [],
+    "status": "failed or unavailable",
+    "error": "browserType.launch: \n╔══════════════════════════════════════════════════════╗\n║ Host system is missing dependencies to run browsers. ║\n║ Missing libraries:                                   ║\n║     libwebkitgtk-6.0.so.4                            ║\n║     libjavascriptcoregtk-6.0.so.1                    ║\n║     libicudata.so.74                                 ║\n║     libicui18n.so.74                                 ║\n║     libicuuc.so.74                                   ║\n║     libxml2.so.2                                     ║\n║     libflite.so.1                                    ║\n║     libflite_usenglish.so.1                          ║\n║     libflite_cmu_grapheme_lang.so.1                  ║\n║     libflite_cmu_grapheme_lex.so.1                   ║\n║     libflite_cmu_indic_lang.so.1                     ║\n║     libflite_cmu_indic_lex.so.1                      ║\n║     libflite_cmulex.so.1                             ║\n║     libflite_cmu_time_awb.so.1                       ║\n║     libflite_cmu_us_awb.so.1                         ║\n║     libflite_cmu_us_kal16.so.1                       ║\n║     libflite_cmu_us_kal.so.1                         ║\n║     libflite_cmu_us_rms.so.1                         ║\n║     libflite_cmu_us_slt.so.1                         ║\n╚══════════════════════════════════════════════════════╝"
+  }
+]

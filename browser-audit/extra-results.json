@@ -1,0 +1,10 @@
+{
+  "checks": [
+    "320px layout",
+    "blocked browser storage does not prevent loading/reordering",
+    "20-second request timeout and recovery"
+  ],
+  "searchRenderMsAt6xSlowdown": 32.5,
+  "timeoutElapsedMs": 20003,
+  "timeoutMessage": "Не удалось обновить данные. Показаны последние полученные значения. Повторная попытка выполняется автоматически."
+}
